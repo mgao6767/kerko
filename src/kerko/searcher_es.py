@@ -172,7 +172,6 @@ class Searcher:
             self.search_args["filter"] = Q("bool", filter=terms)
 
     def _prepare_sorting(self, sort_spec=None):
-        # FIXME: not working as expected yet
         if sort_spec and sort_spec.fields:
             if isinstance(sort_spec.reverse, Iterable):
                 sort_orders = [
@@ -184,7 +183,11 @@ class Searcher:
                     sort_spec.fields
                 )
             self.search_args["sort"] = [
-                {f"{field_key}.keyword": sort_order}
+                {
+                    (
+                        field_key if "date" in field_key else f"{field_key}.keyword"
+                    ): sort_order
+                }
                 for field_key, sort_order in zip(
                     sort_spec.get_field_keys(), sort_orders
                 )
@@ -212,8 +215,8 @@ class Searcher:
         )
         if "filter" in self.search_args:
             search = search.filter(self.search_args["filter"])
-        # if "sort" in self.search_args:
-        #     search = search.sort(*self.search_args["sort"])
+        if "sort" in self.search_args:
+            search = search.sort(*self.search_args["sort"])
         if "aggs" in self.search_args:
             search = search.update_from_dict({"aggs": self.search_args["aggs"]})
         response = search[0:limit].execute()
@@ -231,8 +234,8 @@ class Searcher:
         )
         if "filter" in self.search_args:
             search = search.filter(self.search_args["filter"])
-        # if "sort" in self.search_args:
-        #     search = search.sort(*self.search_args["sort"])
+        if "sort" in self.search_args:
+            search = search.sort(*self.search_args["sort"])
         if "aggs" in self.search_args:
             search = search.update_from_dict({"aggs": self.search_args["aggs"]})
         start = (page - 1) * page_len
