@@ -192,7 +192,11 @@ class Searcher:
 
     def _prepare_faceting(self):
         self.search_args["aggs"] = {
-            facet_spec.key: {"terms": {"field": f"{facet_spec.key}.keyword"}}
+            facet_spec.key: {
+                # A large `size` so to retrieve all items under a facet.
+                # TODO: Determine `size`.
+                "terms": {"field": f"{facet_spec.key}.keyword", "size": 10000}
+            }
             for facet_spec in self.facet_specs.values()
         }
 
@@ -388,6 +392,8 @@ class PagedResults(Results):
 
     def _groups(self, name=None):
         if name:
+            # Ensure all docs are retrieved to build facets.
+            assert self._response.aggregations[name].sum_other_doc_count == 0
             return {
                 d["key"]: d["doc_count"]
                 for d in self._response.aggregations[name].buckets
