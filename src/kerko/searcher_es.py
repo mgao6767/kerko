@@ -1,12 +1,66 @@
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Q
 
+from flask_babel import gettext
+from whoosh import query
+from whoosh.qparser import MultifieldParser, plugins
 from kerko.exceptions import except_raise
 from kerko.shortcuts import composer
 from kerko.storage import SchemaError
+
+
+def whoosh_query_to_es(q):
+    """
+    Recursively converts a Whoosh query object into an Elasticsearch DSL Q object.
+
+    Args:
+        q: A Whoosh query object.
+
+    Returns:
+        An elasticsearch_dsl Q object representing the query.
+    """
+    if isinstance(q, query.Term):
+        # Handle a single term query
+        return Q("match", **{q.fieldname: q.text})
+    elif isinstance(q, query.Phrase):
+        # Handle a phrase query
+        phrase = " ".join(q.words)
+        return Q("match_phrase", **{q.fieldname: phrase})
+    elif isinstance(q, query.And):
+        # Handle boolean AND
+        must_clauses = [whoosh_query_to_es(subq) for subq in q.subqueries]
+        return Q('bool', must=must_clauses)
+    elif isinstance(q, query.Or):
+        # Handle boolean OR
+        should_clauses = [whoosh_query_to_es(subq) for subq in q.subqueries]
+        return Q('bool', should=should_clauses)
+    elif isinstance(q, query.Not):
+        # Handle boolean NOT
+        must_not_clause = whoosh_query_to_es(q.query)
+        return Q('bool', must_not=[must_not_clause])
+    elif isinstance(q, query.CompoundQuery):
+        # Handle grouped queries
+        return whoosh_query_to_es(q.subqueries)
+    elif isinstance(q, query.Wildcard):
+        # Handle wildcard queries
+        return Q("wildcard", **{q.fieldname: f"*{q.text}*"})
+    elif isinstance(q, query.NumericRange):
+        # Handle numeric range queries
+        range_query = {}
+        if q.start is not None:
+            range_query["gte"] = q.start
+        if q.end is not None:
+            range_query["lte"] = q.end
+        return Q("range", **{q.fieldname: range_query})
+    elif isinstance(q, query.Every):
+        # Match all documents
+        return Q("match_all")
+    else:
+        return None
 
 
 class Searcher:
@@ -62,15 +116,28 @@ class Searcher:
         if faceting:
             self._prepare_faceting()
 
-    def _prepare_keywords(self, keywords=None):
+    def _prepare_keywords_whoosh(self, keywords=None):
         """
-        Prepare query parsers and filters.
+        Prepare query parsers.
 
         :param MultiDict keywords: The search texts keyed by scope key. If falsy,
-            the query will match every document.
+            the query will match every documents.
         """
         if keywords:
             queries = []
+            text_plugins = [
+                plugins.PhrasePlugin(),
+                plugins.GroupPlugin(),
+                plugins.OperatorsPlugin(
+                    And=r"(?<=\s)" + re.escape(gettext("AND")) + r"(?=\s)",
+                    Or=r"(?<=\s)" + re.escape(gettext("OR")) + r"(?=\s)",
+                    Not=r"(^|(?<=(\s|[()])))" + re.escape(gettext("NOT")) + r"(?=\s)",
+                    AndNot=None,
+                    AndMaybe=None,
+                    Require=None,
+                ),
+                plugins.BoostPlugin(),
+            ]
             for key, value in keywords.items(multi=True):
                 fields = [
                     field_spec.key
@@ -79,10 +146,24 @@ class Searcher:
                 ]
                 if not fields:
                     raise KeyError  # No known field for that scope key.
-                queries.append(Q("multi_match", query=value, fields=fields))
-            self.search_args["query"] = Q("bool", must=queries)
+                parser = MultifieldParser(
+                    fields, schema=self.schema, plugins=text_plugins
+                )
+                queries.append(parser.parse(value))
+            return query.And(queries)
         else:
-            self.search_args["query"] = Q("match_all")
+            return query.Every()
+
+    def _prepare_keywords(self, keywords=None):
+        """
+        Prepare query parsers and filters.
+
+        :param MultiDict keywords: The search texts keyed by scope key. If falsy,
+            the query will match every document.
+        """
+        query_whoosh = self._prepare_keywords_whoosh(keywords)
+        query_es = whoosh_query_to_es(query_whoosh)
+        self.search_args["query"] = Q("match_all") if query_es is None else query_es
 
     def _prepare_filters(
         self,
