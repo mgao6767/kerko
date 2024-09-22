@@ -13,6 +13,7 @@ from kerko.tags import TagGate
 def init_elasticsearch():
     es = Elasticsearch([{"host": "localhost", "port": 9200, "scheme": "http"}])
     index_name = "index"
+    es.indices.delete(index=index_name, ignore_unavailable=True)
     # Create the new index if it doesn't exist
     if not es.indices.exists(index=index_name):
         es.indices.create(index=index_name, body=INDEX_SETTING)
