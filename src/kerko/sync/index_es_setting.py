@@ -1,5 +1,6 @@
 INDEX_SETTING = {
     "settings": {
+        "max_result_window": 50000,
         "analysis": {
             "analyzer": {
                 "my_english_analyzer": {
