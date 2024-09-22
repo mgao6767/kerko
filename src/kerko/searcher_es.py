@@ -60,7 +60,7 @@ def whoosh_query_to_es(q):
         # Match all documents
         return Q("match_all")
     else:
-        return None
+        return Q("match_all")
 
 
 class Searcher:
