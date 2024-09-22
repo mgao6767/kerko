@@ -13,7 +13,7 @@ from kerko.storage import SchemaError, SearchIndexError, delete_storage, get_doc
 from kerko.sync import zotero
 from kerko.sync.attachments import delete_attachments, sync_attachments
 from kerko.sync.cache import sync_cache
-from kerko.sync.index import sync_index
+from kerko.sync.index_es import sync_index
 
 
 @wrapt.decorator
