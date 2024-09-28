@@ -238,7 +238,7 @@ class SearcherSingleton(Searcher):
     _last_created = datetime.now()
 
     def __new__(cls, *args, **kwargs):
-        if not cls._instance or datetime.now() - cls._last_created > timedelta(hours=12):
+        if not cls._instance or datetime.now() - cls._last_created > timedelta(hours=1):
             if cls._instance:
                 cls._instance.close()
             cls._instance = super(SearcherSingleton, cls).__new__(cls)
