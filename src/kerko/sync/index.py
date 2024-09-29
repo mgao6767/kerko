@@ -3,6 +3,7 @@
 import os
 
 import whoosh
+import whoosh.searching
 from flask import current_app
 from whoosh.query import Term
 
@@ -10,6 +11,7 @@ from kerko.extractors import ItemTitleExtractor
 from kerko.searcher import SearcherSingleton, UnpagedResults
 from kerko.shortcuts import composer, config
 from kerko.storage import SchemaError, SearchIndexError, load_object, open_index, save_object
+from kerko.storage import get_storage_dir
 from kerko.tags import TagGate
 
 
@@ -67,19 +69,23 @@ def sync_index(full=False):  # noqa: ARG001
             config("kerko.zotero.item_include_re"),
             config("kerko.zotero.item_exclude_re"),
         )
-        searcher = SearcherSingleton().searcher
+        searcher = None
+        if whoosh.index.exists_in(get_storage_dir("index") / "whoosh"):
+            if index.doc_count():
+                searcher = SearcherSingleton().searcher
         for item in yield_top_level_items():
             if gate.check(item["data"]):
                 item["children"] = list(yield_children(item))  # Extend the base Zotero item dict.
                 document = {}
                 for spec in list(composer().fields.values()) + list(composer().facets.values()):
                     spec.extract_to_document(document, item, library_context)
-                results = searcher.search(q=Term("id", document["id"]), limit=1)
-                if len(results):
-                    result = UnpagedResults(results).items(composer().fields).pop()
-                    if not has_diff_value_for_common_keys(document, result):
-                        current_app.logger.debug(f"No change to document {document['id']}.")
-                        continue
+                if isinstance(searcher, whoosh.searching.Searcher):
+                    results = searcher.search(q=Term("id", document["id"]), limit=1)
+                    if len(results):
+                        result = UnpagedResults(results).items(composer().fields).pop()
+                        if not has_diff_value_for_common_keys(document, result):
+                            current_app.logger.debug(f"No change to document {document['id']}.")
+                            continue
                 count += 1
                 writer.update_document(**document)
                 current_app.logger.debug(
@@ -125,7 +131,8 @@ def sync_index(full=False):  # noqa: ARG001
             f"({count} top level item(s) processed)."
         )
     finally:
-        searcher.close()
+        if isinstance(searcher, whoosh.searching.Searcher):
+            searcher.close()
         # Clear flask-caching's cache
         if "cache" in current_app.extensions:
             current_app.extensions["cache"].clear()
