@@ -485,6 +485,8 @@ class Composer:
                             field_type=TEXT(
                                 analyzer=self.text_chain,
                                 field_boost=field_config["boost"],
+                                # Store `abstractNote` for highlight
+                                stored=field_key == "abstractNote",
                             ),
                             scopes=field_config["scopes"],
                             extractor=extractors.TransformerExtractor(

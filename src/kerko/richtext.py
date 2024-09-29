@@ -26,6 +26,11 @@ _richtext_span_smallcaps_escaped = re.compile(
     re.DOTALL,
 )
 
+_richtext_b_match_escaped = re.compile(
+    r'&lt;b\s+class\s*=\s*&#34;\s*match\s*term\d*\s*&#34;\s*&gt;(.*?)&lt;/\s*b\s*&gt;',
+    re.DOTALL,
+)
+
 
 def richtext_escape(s: Any) -> Markup:
     """
@@ -53,6 +58,7 @@ def richtext_escape(s: Any) -> Markup:
         .replace("'", "&#39;")
         .replace('"', "&#34;")
     )
+    s = _richtext_b_match_escaped.sub(r'<b class="match">\1</b>', s)
     s = _richtext_base_tags_escaped.sub(r"<\1\2>", s)
     s = _richtext_span_nocase_escaped.sub(r'<span class="nocase">\1</span>', s)
     s = _richtext_span_smallcaps_escaped.sub(r'<span style="font-variant:small-caps;">\1</span>', s)

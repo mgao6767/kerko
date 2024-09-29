@@ -97,3 +97,8 @@ main {
   top: -1px;
   left: -20px;
 }
+/* Highlight search matches */
+.match {
+  font-weight: 600;
+  background-color: #90EE90;
+}

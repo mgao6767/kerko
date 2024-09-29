@@ -111,7 +111,7 @@ def search_single(criteria, form):
             )
 
         # Load item with all available fields.
-        item = results.items(composer().fields, composer().facets)[0]
+        item = results.items(composer().fields, composer().facets, highlight=True)[0]
         facets = results.facets(composer().facets, criteria, active_only=True)
 
         inject_item_data(item)
@@ -247,7 +247,7 @@ def search_list(criteria, form):
             config("kerko.search.result_fields")
             + [badge.field.key for badge in composer().badges.values()],
         )
-        items = results.items(field_specs)
+        items = results.items(field_specs, highlight=True)
         results_facets = results.facets(composer().facets, criteria)
         context["search_results"] = zip(items, _build_item_search_urls(items, criteria))
         context["facet_results"] = "".join(

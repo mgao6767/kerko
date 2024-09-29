@@ -4,7 +4,9 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from itertools import chain
 
+import whoosh
 from flask_babel import gettext
+from whoosh.highlight import WholeFragmenter, Highlighter
 from whoosh.qparser import MultifieldParser, plugins
 from whoosh.query import And, Every, Not, Or, Term
 from whoosh.query.ranges import DateRange
@@ -273,7 +275,9 @@ class Results(ABC):
         :param results: Either a `whoosh.searching.Results`, or a
             `whoosh.searching.ResultsPage` object.
         """
+        # For highlighter to return full text
         self._results = results
+        self._hliter = Highlighter(fragmenter=WholeFragmenter())
 
     def __iter__(self):
         """Yield a `whoosh.searching.Hit` object for each result in ranked order."""
@@ -303,7 +307,7 @@ class Results(ABC):
     def item_count(self):
         pass
 
-    def items(self, field_specs, facet_specs=None):
+    def items(self, field_specs, facet_specs=None, highlight=False):
         """
         Load search result items, with just the specified fields.
 
@@ -317,7 +321,18 @@ class Results(ABC):
             each item. Any requested facet that is not present in a result is
             silently ignored for that result.
         """
-        return [self._item(hit, field_specs, facet_specs) for hit in self._results]
+        _items = []
+        for hit in self._results:
+            item = self._item(hit, field_specs, facet_specs)
+            # The following failed to work even though highlighter is correctly
+            # set on self._results. Don't know why. Manual highlight solves it.
+            # h = hit.highlights("z_abstractNote", top=9999, minscore=0)
+            if highlight:
+                text = hit["z_abstractNote"] 
+                h = self._hliter.highlight_hit(hit, fieldname="z_abstractNote", text=text, top=9999, minscore=0)
+                item["data"]["abstractNote"] = h
+            _items.append(item)
+        return _items
 
     def facets(self, facet_specs, criteria, active_only=False):
         """
