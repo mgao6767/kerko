@@ -106,7 +106,7 @@ class Composer:
             "creator": _("In authors or contributors"),
             "title": _("In titles"),
             "pubyear": _("In publication years"),
-            "metadata": _("In all fields (abstract and more)"),
+            "metadata": _("In all meta data (title, abstract, tags, etc.)"),
             "fulltext": _("In documents (full-text)"),
         }
         breadbox_label = {
