@@ -37,7 +37,7 @@ class Blueprint(BaseBlueprint):
         app.config["CACHE_TYPE"] = "filesystem"
         app.config["CACHE_DIR"] = ".flask_cache"
         app.config["CACHE_THRESHOLD"] = 10000
-        app.config["CACHE_DEFAULT_TIMEOUT"] = 86400  # 1 day in seconds
+        app.config["CACHE_DEFAULT_TIMEOUT"] = 60*60 # 1hr
         return Cache(app)
 
     def _add_core_urls(self, cache: Cache) -> None:

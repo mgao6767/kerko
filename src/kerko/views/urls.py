@@ -6,8 +6,8 @@ urls = [
         "rule": "/",
         "view_func": routes.search,
         "methods": ["GET", "POST"],
-        # Disable flask-caching. Use lru_cache instead.
-        "cache": False,
+        # flask-caching
+        "cache": True,
     },
     {
         "rule": "/atom.xml",
