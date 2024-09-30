@@ -41,7 +41,21 @@ class Criteria:
     The goal of this class is to provide a convenient place for storing and
     accessing validated parameters that describe a search request.
     """
+    def __hash__(self):
+        """
+        Return a hash based on the keywords, filters, and options.
+        """
+        return hash((
+            frozenset(self.options.items(multi=True)),
+            frozenset(self.keywords.items(multi=True)),
+            frozenset(self.filters.items(multi=True)),
+        ))
 
+    def __eq__(self, other):
+        if not isinstance(other, Criteria):
+            return False
+        return hash(self) == hash(other)
+        
     def __init__(self, initial=None, options_initializers=None):
         """
         Initialize the criteria.

@@ -1,3 +1,4 @@
+import functools
 import time
 from datetime import datetime
 
@@ -149,6 +150,24 @@ def search_single(criteria, form):
 def search_list(criteria, form):
     """Perform search, and prepare the template context variables for a list of search results."""
     start_time = time.process_time()
+    # _search_list_context has a side effect: `fit_page`
+    # For the front page, criteria has no `page` option. This patches it.
+    criteria.options["page"] = criteria.options.get("page", 1)
+    context = _search_list_context(criteria)
+    if context is None:
+        return empty_results(criteria, form)
+    return render_template(
+        config("kerko.templates.search"),
+        form=form,
+        time=time.process_time() - start_time,
+        locale=get_locale(),
+        is_searching=criteria.is_searching(),
+        **context,
+    )
+
+
+@functools.lru_cache(maxsize=1024)
+def _search_list_context(criteria):
     context = {}
     with SearcherSingleton() as searcher:
         page_len = criteria.options.get("page-len", config("kerko.pagination.page_len"))
@@ -172,8 +191,10 @@ def search_list(criteria, form):
             )
 
         if results.is_empty():
-            return empty_results(criteria, form)
+            return None
 
+        # This has side effect, modifying `page` of criteria.options
+        # This affects lru caching on the front page where `page` does not exist.
         criteria.fit_page(results.page_count)
 
         if criteria.is_searching():
@@ -249,7 +270,8 @@ def search_list(criteria, form):
         )
         items = results.items(field_specs, highlight=True)
         results_facets = results.facets(composer().facets, criteria)
-        context["search_results"] = zip(items, _build_item_search_urls(items, criteria))
+        # The use of cache means that we cannot use generators
+        context["search_results"] = list(zip(items, _build_item_search_urls(items, criteria)))
         context["facet_results"] = "".join(
             spec.render(results_facets[spec.key], "search")
             for spec in composer().get_ordered_specs("facets")
@@ -262,11 +284,5 @@ def search_list(criteria, form):
                 last_sync,
                 tz=datetime.now().astimezone().tzinfo,
             )
-    return render_template(
-        config("kerko.templates.search"),
-        form=form,
-        time=time.process_time() - start_time,
-        locale=get_locale(),
-        is_searching=criteria.is_searching(),
-        **context,
-    )
+
+    return context
