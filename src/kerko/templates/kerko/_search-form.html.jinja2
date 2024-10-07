@@ -9,7 +9,7 @@
                 {%- set keywords_validation_class = " is-invalid" if 'keywords' in form.errors else "" %}
                 {%- set scope_validation_class = " is-invalid" if 'scope' in form.errors else "" %}
                 <label for="{{ form.keywords.id }}" class="sr-only">{{ placeholder }}</label>
-                {{- form.keywords(class_="form-control" + keywords_validation_class, placeholder=placeholder) }}
+                {{- form.keywords(class_="form-control" + keywords_validation_class, placeholder=placeholder, autofocus=true) }}
             </div>
             <div class="col col-md-5 px-1">
                 <label for="{{ form.scope.id }}" class="sr-only">{{ _('Search in...') }}</label>
