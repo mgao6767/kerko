@@ -109,11 +109,11 @@
             {%- block word_cloud %}
                 {%- if word_cloud %}
                     <div class="card breadbox mb-4 d-print-none">
-                        <div class="card-body">
-                            {{ word_cloud|safe }}
+                        <div class="card-body" id="word_cloud">
+                            <img id="word_cloud_img" src="{{ url_for('kerko.static', filename='wordclouds/' ~ word_cloud ~ '.png') }}" style="width: 100%; height: auto" alt="{{ _('Word cloud image') }}" />
                         </div>
                     </div>
-                    {%- endif %}
+                {%- endif %}
             {% endblock word_cloud %}
 
             {%- block search_results_list %}
@@ -230,4 +230,54 @@
             <script src="{{ url_for('kerko.static', filename='kerko/js/print.js') }}"></script>
         {%- endif %}
     {%- endblock kerko_print_js %}
+    {%- block word_cloud_js %}
+        {%- if word_cloud %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const imgElement = document.getElementById('word_cloud_img');
+                const maxRetries = 10;
+                let retryCount = 0;
+
+                function checkImage() {
+                    if (imgElement.complete && imgElement.naturalHeight !== 0) {
+                        return;
+                    }
+                    fetch(imgElement.src)
+                        .then(response => {
+                            if (response.status === 200) {
+                                return response.blob();
+                            } else if (response.status === 202) {
+                                throw new Error('Image not yet available');
+                            } else {
+                                throw new Error('Unexpected response');
+                            }
+                        })
+                        .then(blob => {
+                            const url = URL.createObjectURL(blob);
+                            imgElement.src = url;
+                        })
+                        .catch((error) => {
+                            if (retryCount < maxRetries) {
+                                retryCount++;
+                                setTimeout(checkImage, 100);
+                            } else {
+                                console.log('Max retries reached. Image not available.');
+                            }
+                        });
+                }
+
+                imgElement.onerror = function() {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(checkImage, 25);
+                    } else {
+                        console.log('Max retries reached. Image not available.');
+                    }
+                };
+
+                checkImage();
+            });
+        </script>
+        {%- endif %}
+    {%- endblock word_cloud_js %}
 {%- endblock body_scripts %}

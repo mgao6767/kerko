@@ -60,3 +60,6 @@ coverage.xml
 .flaskenv
 .secrets.toml
 instance.toml
+
+# Word cloud images
+/src/kerko/static/wordclouds

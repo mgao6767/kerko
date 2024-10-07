@@ -1,6 +1,8 @@
-import base64
 import functools
+import os
+import shutil
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from io import BytesIO
 
@@ -17,7 +19,6 @@ from kerko.shortcuts import composer, config
 from kerko.sync import kerko_last_sync
 from kerko.views import breadbox, pager, sorter
 from kerko.views.item import build_item_context, inject_item_data
-import os
 
 
 WORDCLOUD_STOPWORDS = set(STOPWORDS)
@@ -27,6 +28,28 @@ if os.path.exists(stopwords_file_path):
     with open(stopwords_file_path, 'r', encoding='utf-8') as file:
         additional_stopwords = [line.strip() for line in file if line.strip()]
     WORDCLOUD_STOPWORDS.update(additional_stopwords)
+
+
+# Create a ThreadPoolExecutor instance
+executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="wordcloud")
+
+wordcloud_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'wordclouds')
+wordcloud_dir_last_cleared = time.time()
+os.makedirs(wordcloud_dir, exist_ok=True)
+
+def clean_wordcloud_dir():
+    """Clean up the wordcloud directory."""
+    for filename in os.listdir(wordcloud_dir):
+        file_path = os.path.join(wordcloud_dir, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"Failed to delete {file_path}. Reason: {e}")
+
+clean_wordcloud_dir()
 
 
 def _build_item_search_urls(items, criteria):
@@ -180,7 +203,7 @@ def search_list(criteria, form, word_cloud):
     )
 
 
-def generate_word_cloud(text):
+def generate_word_cloud(text, word_cloud_hash):
     if not text:
         return ""
     # Generate a word cloud image
@@ -209,9 +232,16 @@ def generate_word_cloud(text):
     # Save it to a temporary buffer.
     buf = BytesIO()
     fig.savefig(buf, format="png")
-    # Embed the result in the html output.
-    data = base64.b64encode(buf.getbuffer()).decode("ascii")
-    return f"<img src='data:image/png;base64,{data}' style='width: 100%;'/>"
+    # Generate a unique filename
+    filename = f"{word_cloud_hash}.png"
+    filepath = os.path.join(wordcloud_dir, filename)
+
+    # Save the image to the file
+    with open(filepath, 'wb') as f:
+        f.write(buf.getbuffer())
+
+    # Return the URL to the client
+    return url_for('static', filename=f'wordclouds/{filename}')
 
 
 @functools.lru_cache(maxsize=1024)
@@ -327,12 +357,17 @@ def _search_list_context(criteria, word_cloud=True):
         context["breadbox"] = breadbox.build_breadbox(criteria, results_facets)
 
         if word_cloud:
-            # Word cloud (#TODO Add fulltext as well?)
-            text_wordcloud = " ".join(hit["z_abstractNote"] for hit in results 
-                                    if "z_abstractNote" in hit)
-            text_wordcloud += " ".join(item["data"]["title"] for item in items 
-                                        if "data" in items and "title" in item["data"])
-            context["word_cloud"] = generate_word_cloud(text_wordcloud)
+            word_cloud_hash = hash(criteria)
+            context["word_cloud"] = word_cloud_hash
+            word_cloud_img = os.path.join(wordcloud_dir, f"{word_cloud_hash}.png")
+            if not os.path.exists(word_cloud_img):
+                # Word cloud (#TODO Add fulltext as well?)
+                text_wordcloud = " ".join(hit["z_abstractNote"] for hit in results 
+                                        if "z_abstractNote" in hit)
+                text_wordcloud += " ".join(item["data"]["title"] for item in items 
+                                            if "data" in items and "title" in item["data"])
+                # Submit the generate_word_cloud function to the executor
+                executor.submit(generate_word_cloud, text_wordcloud, hash(criteria))
 
         last_sync = kerko_last_sync()
         if last_sync:
