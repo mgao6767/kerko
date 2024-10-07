@@ -1,11 +1,15 @@
+import base64
 import functools
 import time
 from datetime import datetime
+from io import BytesIO
 
 from babel.numbers import format_decimal
 from flask import redirect, render_template, url_for
 from flask_babel import get_locale, gettext, ngettext
+from matplotlib.figure import Figure
 from werkzeug.datastructures import MultiDict
+from wordcloud import WordCloud, STOPWORDS
 
 from kerko.criteria import create_feed_criteria
 from kerko.searcher import SearcherSingleton
@@ -13,6 +17,14 @@ from kerko.shortcuts import composer, config
 from kerko.sync import kerko_last_sync
 from kerko.views import breadbox, pager, sorter
 from kerko.views.item import build_item_context, inject_item_data
+
+
+WORDCLOUD_STOPWORDS = set(STOPWORDS)
+_additional_stopwords = [
+    "amp", "find", "abstract", "author", "authors", "Appendix", "Internet Appendix",
+]
+for word in _additional_stopwords:
+    WORDCLOUD_STOPWORDS.add(word)
 
 
 def _build_item_search_urls(items, criteria):
@@ -166,6 +178,35 @@ def search_list(criteria, form):
     )
 
 
+def generate_word_cloud(text):
+    if not text:
+        return ""
+    # Generate a word cloud image
+    wc = WordCloud(background_color=None,
+                   mode="RGBA",
+                   colormap="twilight",
+                   max_words=150,
+                   stopwords=WORDCLOUD_STOPWORDS,
+                   max_font_size=110,
+                   min_font_size =15,
+                   width=1000,
+                   height=500,
+                   random_state=42)
+    wordcloud = wc.generate(text)
+
+    fig = Figure(figsize=(10, 5), facecolor='none', edgecolor='none')
+    fig.set_tight_layout({"pad": 1.0})
+    ax = fig.subplots()
+    ax.imshow(wordcloud, interpolation="bilinear")
+    ax.axis("off")
+    # Save it to a temporary buffer.
+    buf = BytesIO()
+    fig.savefig(buf, format="png")
+    # Embed the result in the html output.
+    data = base64.b64encode(buf.getbuffer()).decode("ascii")
+    return f"<img src='data:image/png;base64,{data}' style='width: 100%;'/>"
+
+
 @functools.lru_cache(maxsize=1024)
 def _search_list_context(criteria):
     context = {}
@@ -277,6 +318,14 @@ def _search_list_context(criteria):
             for spec in composer().get_ordered_specs("facets")
         )
         context["breadbox"] = breadbox.build_breadbox(criteria, results_facets)
+
+        # Word cloud (#TODO Add fulltext as well?)
+        text_wordcloud = " ".join(hit["z_abstractNote"] for hit in results 
+                                   if "z_abstractNote" in hit)
+        text_wordcloud += " ".join(item["data"]["title"] for item in items 
+                                    if "data" in items and "title" in item["data"])
+        if len(text_wordcloud) > 2:
+            context["word_cloud"] = generate_word_cloud(text_wordcloud)
 
         last_sync = kerko_last_sync()
         if last_sync:
