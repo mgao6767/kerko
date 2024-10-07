@@ -98,6 +98,9 @@ artifacts = [
 exclude = [
     ".git-blame-ignore-revs",
 ]
+include = [
+    "src/kerko/views/additional_stopwords.txt",
+]
 
 [tool.hatch.build.hooks.custom]
 dependencies = [

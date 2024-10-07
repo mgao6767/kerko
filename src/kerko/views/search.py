@@ -17,15 +17,16 @@ from kerko.shortcuts import composer, config
 from kerko.sync import kerko_last_sync
 from kerko.views import breadbox, pager, sorter
 from kerko.views.item import build_item_context, inject_item_data
+import os
 
 
 WORDCLOUD_STOPWORDS = set(STOPWORDS)
-_additional_stopwords = [
-    "amp", "find", "abstract", "author", "authors", "Appendix", "Internet Appendix",
-    "using", "Using", "suggest", "suggests", "t"
-]
-for word in _additional_stopwords:
-    WORDCLOUD_STOPWORDS.add(word)
+# Read additional stopwords from a file
+stopwords_file_path = os.path.join(os.path.dirname(__file__), 'additional_stopwords.txt')
+if os.path.exists(stopwords_file_path):
+    with open(stopwords_file_path, 'r', encoding='utf-8') as file:
+        additional_stopwords = [line.strip() for line in file if line.strip()]
+    WORDCLOUD_STOPWORDS.update(additional_stopwords)
 
 
 def _build_item_search_urls(items, criteria):
