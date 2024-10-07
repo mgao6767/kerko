@@ -22,6 +22,7 @@ from kerko.views.item import build_item_context, inject_item_data
 WORDCLOUD_STOPWORDS = set(STOPWORDS)
 _additional_stopwords = [
     "amp", "find", "abstract", "author", "authors", "Appendix", "Internet Appendix",
+    "using", "Using", "suggest", "suggests", "t"
 ]
 for word in _additional_stopwords:
     WORDCLOUD_STOPWORDS.add(word)
@@ -159,13 +160,13 @@ def search_single(criteria, form):
     )
 
 
-def search_list(criteria, form):
+def search_list(criteria, form, word_cloud):
     """Perform search, and prepare the template context variables for a list of search results."""
     start_time = time.process_time()
     # _search_list_context has a side effect: `fit_page`
     # For the front page, criteria has no `page` option. This patches it.
     criteria.options["page"] = criteria.options.get("page", 1)
-    context = _search_list_context(criteria)
+    context = _search_list_context(criteria, word_cloud)
     if context is None:
         return empty_results(criteria, form)
     return render_template(
@@ -185,16 +186,21 @@ def generate_word_cloud(text):
     wc = WordCloud(background_color=None,
                    mode="RGBA",
                    colormap="twilight",
-                   max_words=150,
+                   max_words=100,
                    stopwords=WORDCLOUD_STOPWORDS,
-                   max_font_size=110,
-                   min_font_size =15,
-                   width=1000,
-                   height=500,
+                   max_font_size=40,
+                   min_font_size=5,
+                   width=400,
+                   height=200,
+                   scale=6,
                    random_state=42)
-    wordcloud = wc.generate(text)
+    try:
+        wordcloud = wc.generate(text)
+    except ValueError:
+        # Maybe there's no word in `text`
+        return ""
 
-    fig = Figure(figsize=(10, 5), facecolor='none', edgecolor='none')
+    fig = Figure(figsize=(8, 4), dpi=120, facecolor='none', edgecolor='none')
     fig.set_tight_layout({"pad": 1.0})
     ax = fig.subplots()
     ax.imshow(wordcloud, interpolation="bilinear")
@@ -208,7 +214,7 @@ def generate_word_cloud(text):
 
 
 @functools.lru_cache(maxsize=1024)
-def _search_list_context(criteria):
+def _search_list_context(criteria, word_cloud=True):
     context = {}
     with SearcherSingleton() as searcher:
         page_len = criteria.options.get("page-len", config("kerko.pagination.page_len"))
@@ -319,12 +325,12 @@ def _search_list_context(criteria):
         )
         context["breadbox"] = breadbox.build_breadbox(criteria, results_facets)
 
-        # Word cloud (#TODO Add fulltext as well?)
-        text_wordcloud = " ".join(hit["z_abstractNote"] for hit in results 
-                                   if "z_abstractNote" in hit)
-        text_wordcloud += " ".join(item["data"]["title"] for item in items 
-                                    if "data" in items and "title" in item["data"])
-        if len(text_wordcloud) > 2:
+        if word_cloud:
+            # Word cloud (#TODO Add fulltext as well?)
+            text_wordcloud = " ".join(hit["z_abstractNote"] for hit in results 
+                                    if "z_abstractNote" in hit)
+            text_wordcloud += " ".join(item["data"]["title"] for item in items 
+                                        if "data" in items and "title" in item["data"])
             context["word_cloud"] = generate_word_cloud(text_wordcloud)
 
         last_sync = kerko_last_sync()
