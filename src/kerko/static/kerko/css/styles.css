@@ -102,3 +102,36 @@ main {
   font-weight: 600;
   background-color: #90EE90;
 }
+
+.share-btn {
+  display: inline-block;
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: opacity 0.3s ease;
+}
+
+.share-btn:hover {
+  opacity: 80%;
+}
+
+.twitter {
+  background-color: #14171A;
+}
+
+.facebook {
+  background-color: #3a579a;
+}
+
+.pinterest {
+  background-color: #cd1c1f;
+}
+
+.linkedin {
+  background-color: #007AB6;
+}
+
+.reddit {
+  background-color: #FF4500;
+}

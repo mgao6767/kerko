@@ -1,6 +1,7 @@
 {% extends config.kerko.templates.layout %}
 {% from "kerko/_attributes.html.jinja2" import title_aria_label %}
 {% from "kerko/_breadcrumb.html.jinja2" import breadcrumb %}
+{% from "kerko/_share_links.html.jinja2" import share_links %}
 
 {%- set show_print_link = config.kerko.features.print_results_max_count == 0 or total_count <= config.kerko.features.print_results_max_count %}
 {%- set show_print_link = show_print_link and config.kerko.features.print_results %}
@@ -115,7 +116,9 @@
                     </div>
                 {%- endif %}
             {% endblock word_cloud %}
-
+            {%- block share_links_top %}
+                {{ share_links('text-right mb-4 d-print-none') }}
+            {%- endblock share_links_top %}
             {%- block search_results_list %}
                 <ul class="mb-4 list-unstyled {% if print_preview %}search-print-preview{% endif %}">
                     {%- for result, result_url in search_results %}
@@ -171,6 +174,9 @@
                     {%- if last_sync %}
                         {% trans when=last_sync|kerko_format_datetime(convert_tz=True, show_tz=True) %}Last update from database: {{ when }}{% endtrans %}
                     {%- endif %}
+                    {%- block share_links %}
+                        {{ share_links() }}
+                    {%- endblock share_links %}
                 </div>
             {%- endblock search_results_footer %}
         {%- else %}

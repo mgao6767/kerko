@@ -1,0 +1,19 @@
+{% macro share_links(wrapper_classes='my-4 d-print-none') %}
+    <div class="{{ wrapper_classes }}">
+        <a href="https://x.com/intent/post?url=https://phds.io/" class="share-btn twitter">
+            <i class="fa-brands fa-x-twitter"></i>
+        </a>
+        <a href="https://www.facebook.com/sharer.php?u=https://phds.io/" class="share-btn facebook">
+            <i class="fa-brands fa-facebook"></i>
+        </a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://phds.io/" class="share-btn linkedin">
+            <i class="fa-brands fa-linkedin"></i>
+        </a>
+        <a href="https://www.reddit.com/submit?url=https://phds.io/&title=PhDs.io" class="share-btn reddit">
+            <i class="fa-brands fa-reddit"></i>
+        </a>
+        <a href="http://pinterest.com/pin/create/button/?url=https://phds.io/" class="share-btn pinterest">
+            <i class="fa-brands fa-pinterest"></i>
+        </a>
+    </div>
+{% endmacro %}
