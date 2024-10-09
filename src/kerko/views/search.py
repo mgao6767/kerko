@@ -363,8 +363,8 @@ def _search_list_context(criteria, word_cloud=True):
         else:
             # Prevent the cache dict from growing forever
             if len(facets_cache) > MAX_FACETS_CACHE:
-                for k in facets_cache.keys():
-                    facets_cache.pop(k)
+                for k in list(facets_cache.keys())[:len(facets_cache) - MAX_FACETS_CACHE]:
+                    del facets_cache[k]
             # Compute the results_facets and store it in the cache
             results_facets = results.facets(composer().facets, criteria)
             facets_cache[criteria_hash] = results_facets
