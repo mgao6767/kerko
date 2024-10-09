@@ -21,6 +21,10 @@ from kerko.views import breadbox, pager, sorter
 from kerko.views.item import build_item_context, inject_item_data
 
 
+# Global cache dictionary
+facets_cache = {}
+MAX_FACETS_CACHE = 256
+
 WORDCLOUD_STOPWORDS = set(STOPWORDS)
 # Read additional stopwords from a file
 stopwords_file_path = os.path.join(os.path.dirname(__file__), 'additional_stopwords.txt')
@@ -347,7 +351,26 @@ def _search_list_context(criteria, word_cloud=True):
             + [badge.field.key for badge in composer().badges.values()],
         )
         items = results.items(field_specs, highlight=True)
-        results_facets = results.facets(composer().facets, criteria)
+
+        # Cache `results_facets` which don't change with criteria...
+        # But need to remove the page number from options so that all pages
+        # have the same criteria
+        _page = criteria.options.pop("page")
+        criteria_hash = hash(criteria)
+        # Check if the hash exists in the cache
+        if criteria_hash in facets_cache:
+            results_facets = facets_cache[criteria_hash]
+        else:
+            # Prevent the cache dict from growing forever
+            if len(facets_cache) > MAX_FACETS_CACHE:
+                for k in facets_cache.keys():
+                    facets_cache.pop(k)
+            # Compute the results_facets and store it in the cache
+            results_facets = results.facets(composer().facets, criteria)
+            facets_cache[criteria_hash] = results_facets
+        # Need restore the original criteria
+        criteria.options["page"] = _page
+
         # The use of cache means that we cannot use generators
         context["search_results"] = list(zip(items, _build_item_search_urls(items, criteria)))
         context["facet_results"] = "".join(
@@ -367,7 +390,7 @@ def _search_list_context(criteria, word_cloud=True):
                 text_wordcloud += " ".join(item["data"]["title"] for item in items 
                                             if "data" in items and "title" in item["data"])
                 # Submit the generate_word_cloud function to the executor
-                executor.submit(generate_word_cloud, text_wordcloud, hash(criteria))
+                executor.submit(generate_word_cloud, text_wordcloud, word_cloud_hash)
 
         last_sync = kerko_last_sync()
         if last_sync:
