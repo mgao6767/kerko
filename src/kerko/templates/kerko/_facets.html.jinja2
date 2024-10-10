@@ -70,16 +70,17 @@
             item_tag='li',
             top_level=False,
             collapse=False,
-            more=False
+            more=False,
+            depth=0,
+            depth_limit=9
         )
     -%}
-    {%- set not_homepage = request.args|length > 1 or (request.args|length == 1 and 'page' not in request.args) %}
     {%- if items %}
         <{{ list_tag }}{% if list_id %} id="{{ list_id }}{% if more %}-more{% endif %}"{% endif %} class="{{ list_class_top if top_level else list_class }}{% if list_id %} collapse{% if not collapse %} show{% endif %}{% endif %}">
             {%- for item in items %}
-                {%- if item.children and not_homepage %}
+                {%- if item.children and depth<depth_limit %}
                     {%- set subtree_id = list_id + '-' + item.id|string if list_id and item.id else '' %}
-                    {%- set subtree = facet_items(missing_label, item.children, list_id=subtree_id, list_tag=list_tag, item_tag=item_tag, collapse=not item.remove_url, **kwargs) %}
+                    {%- set subtree = facet_items(missing_label, item.children, list_id=subtree_id, list_tag=list_tag, item_tag=item_tag, collapse=not item.remove_url, depth=depth+1, depth_limit=depth_limit, **kwargs) %}
                 {%- else %}
                     {%- set subtree = '' %}
                 {%- endif %}
@@ -102,6 +103,7 @@
             list_class_top='list-unstyled'
         )
     -%}
+    {%- set is_homepage = request.args|length == 0 or (request.args|length == 1 and 'page' in request.args) %}
     {%- if items %}
         <{{ wrap_tag }}{% if wrap_class %} class="{{ wrap_class }}"{% endif %}>
             <{{ heading_tag }}{% if heading_class %} class="{{ heading_class }}"{% endif %}>
@@ -116,7 +118,12 @@
                         {{- expand_collapse_buttons(collapse_id=list_id + '-more') -}}
                     </div>
                 {%- else %}
-                    {{- facet_items(missing_label, items, list_id=list_id, list_class_top=list_class_top, top_level=True, **kwargs) }}
+                    {#- Only for the "Journals" facet on homepage, limit the depth of children to reduce page size and improve performance -#}
+                    {%- if title|string == "Journals" and is_homepage %}
+                        {{- facet_items(missing_label, items, list_id=list_id, list_class_top=list_class_top, top_level=True, depth_limit=1, **kwargs) }}
+                    {%- else %}
+                        {{- facet_items(missing_label, items, list_id=list_id, list_class_top=list_class_top, top_level=True, **kwargs) }}
+                    {%- endif %}
                 {%- endif %}
             </{{ body_tag }}>
         </{{ wrap_tag }}>
