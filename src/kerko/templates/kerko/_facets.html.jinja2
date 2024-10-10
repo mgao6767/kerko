@@ -73,10 +73,11 @@
             more=False
         )
     -%}
+    {%- set not_homepage = request.args|length > 1 or (request.args|length == 1 and 'page' not in request.args) %}
     {%- if items %}
         <{{ list_tag }}{% if list_id %} id="{{ list_id }}{% if more %}-more{% endif %}"{% endif %} class="{{ list_class_top if top_level else list_class }}{% if list_id %} collapse{% if not collapse %} show{% endif %}{% endif %}">
             {%- for item in items %}
-                {%- if item.children %}
+                {%- if item.children and not_homepage %}
                     {%- set subtree_id = list_id + '-' + item.id|string if list_id and item.id else '' %}
                     {%- set subtree = facet_items(missing_label, item.children, list_id=subtree_id, list_tag=list_tag, item_tag=item_tag, collapse=not item.remove_url, **kwargs) %}
                 {%- else %}
