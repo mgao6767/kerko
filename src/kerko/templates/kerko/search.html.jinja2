@@ -89,7 +89,7 @@
             {%- endif %}
         </div>
         {%- if search_results %}
-            {%- if pager or config.kerko.features.results_abstracts_toggler %}
+            {%- if pager or config.kerko.features.results_abstracts_toggler or config.kerko.features.wordcloud_toggler %}
                 <div class="row mb-2">
                     {%- if pager %}
                         <div class="col-auto mr-auto">
