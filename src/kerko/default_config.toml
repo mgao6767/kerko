@@ -31,6 +31,8 @@ results_abstracts_max_length_leeway = 0
 results_abstracts_toggler = true
 results_attachment_links = true
 results_url_links = true
+wordcloud = false
+wordcloud_toggler = true
 
 [kerko.feeds]
 

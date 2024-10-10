@@ -100,6 +100,8 @@ class FeaturesModel(BaseModel):
     results_abstracts_toggler: bool
     results_attachment_links: bool
     results_url_links: bool
+    wordcloud: bool
+    wordcloud_toggler: bool
 
 
 class FeedsModel(BaseModel):

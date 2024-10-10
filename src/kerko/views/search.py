@@ -188,13 +188,13 @@ def search_single(criteria, form):
     )
 
 
-def search_list(criteria, form, word_cloud):
+def search_list(criteria, form):
     """Perform search, and prepare the template context variables for a list of search results."""
     start_time = time.process_time()
     # _search_list_context has a side effect: `fit_page`
     # For the front page, criteria has no `page` option. This patches it.
     criteria.options["page"] = criteria.options.get("page", 1)
-    context = _search_list_context(criteria, word_cloud)
+    context = _search_list_context(criteria)
     if context is None:
         return empty_results(criteria, form)
     return render_template(
@@ -249,7 +249,7 @@ def generate_word_cloud(text, word_cloud_hash):
 
 
 @functools.lru_cache(maxsize=1024)
-def _search_list_context(criteria, word_cloud=True):
+def _search_list_context(criteria):
     context = {}
     with SearcherSingleton() as searcher:
         page_len = criteria.options.get("page-len", config("kerko.pagination.page_len"))
@@ -292,6 +292,21 @@ def _search_list_context(criteria, word_cloud=True):
             criteria,
         )
         context["sorter"] = sorter.build_sorter(criteria)
+        context["show_wordcloud"] = criteria.options.get(
+            "wordcloud", config("kerko.features.wordcloud")
+        )
+        context["wordcloud_toggler_url"] = url_for(
+            ".search",
+            **criteria.params(
+                options={
+                    "wordcloud": int(
+                        not criteria.options.get(
+                            "wordcloud", config("kerko.features.wordcloud")
+                        )
+                    ),
+                }
+            ),
+        )
         context["show_abstracts"] = criteria.options.get(
             "abstracts", config("kerko.features.results_abstracts")
         )
@@ -379,7 +394,7 @@ def _search_list_context(criteria, word_cloud=True):
         )
         context["breadbox"] = breadbox.build_breadbox(criteria, results_facets)
 
-        if word_cloud:
+        if context["show_wordcloud"]:
             word_cloud_hash = hash(criteria)
             context["word_cloud"] = word_cloud_hash
             word_cloud_img = os.path.join(wordcloud_dir, f"{word_cloud_hash}.png")

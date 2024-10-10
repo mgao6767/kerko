@@ -43,8 +43,9 @@ SITEMAP_URL_MAX_COUNT = 1000
 @except_abort(SearchIndexError, 503)
 def search():
     """View the results of a search."""
-    word_cloud = "bot" not in request.headers.get("User-Agent", "").lower()
     criteria = create_search_criteria(request.args)
+    if "bot" in request.headers.get("User-Agent", "").lower():
+        criteria.options["wordcloud"] = False
     form = SearchForm(csrf_enabled=False)
     if form.validate_on_submit():
         scope = composer().scopes.get(form.scope.data)
@@ -61,7 +62,7 @@ def search():
 
     if criteria.options.get("page-len", config("kerko.pagination.page_len")) == 1:
         return search_single(criteria, form)
-    return search_list(criteria, form, word_cloud)
+    return search_list(criteria, form)
 
 
 @except_abort(SchemaError, 500)

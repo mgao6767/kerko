@@ -8,6 +8,7 @@
 {%- set show_download_link = config.kerko.features.download_results_max_count == 0 or total_count <= config.kerko.features.download_results_max_count %}
 {%- set show_download_link = show_download_link and config.kerko.features.download_results and config.kerko_composer.bib_formats %}
 {%- set abstracts_toggler_title = _('Hide abstracts') if show_abstracts else _('Show abstracts') %}
+{%- set wordcloud_toggler_title = _('Hide word cloud') if show_wordcloud else _('Show word cloud') %}
 
 {%- block metas %}
     {{- super() }}
@@ -97,8 +98,15 @@
                             {%- endblock pager_top %}
                         </div>
                     {%- endif %}
-                    {%- if config.kerko.features.results_abstracts_toggler %}
+                    {%- if config.kerko.features.wordcloud_toggler %}
                         <div class="col-auto ml-auto pl-0">
+                            {%- block wordcloud_toggler %}
+                                <a class="btn btn-light d-print-none" href="{{ wordcloud_toggler_url }}" title="{{ wordcloud_toggler_title }}" aria-label="{{ wordcloud_toggler_title }}">{% if show_wordcloud %}<span class="fas fa-toggle-on" aria-hidden="true"></span>{% else %}<span class="fas fa-toggle-off" aria-hidden="true"></span>{% endif %} {{ _("Word Cloud") }}</a>
+                            {%- endblock wordcloud_toggler %}
+                        </div>
+                    {%- endif %}
+                    {%- if config.kerko.features.results_abstracts_toggler %}
+                        <div class="col-auto pl-0">
                             {%- block abstracts_toggler %}
                                 <a class="btn btn-light d-print-none" href="{{ abstracts_toggler_url }}" title="{{ abstracts_toggler_title }}" aria-label="{{ abstracts_toggler_title }}">{% if show_abstracts %}<span class="fas fa-toggle-on" aria-hidden="true"></span>{% else %}<span class="fas fa-toggle-off" aria-hidden="true"></span>{% endif %} {{ _("Abstracts") }}</a>
                             {%- endblock abstracts_toggler %}
@@ -108,7 +116,7 @@
             {%- endif %}
 
             {%- block word_cloud %}
-                {%- if word_cloud %}
+                {%- if show_wordcloud and word_cloud %}
                     <div class="card breadbox mb-4 d-print-none">
                         <div class="card-body" id="word_cloud">
                             <img id="word_cloud_img" src="{{ url_for('kerko.static', filename='wordclouds/' ~ word_cloud ~ '.png') }}" style="width: 100%; height: auto" alt="{{ _('Word cloud image') }}" />

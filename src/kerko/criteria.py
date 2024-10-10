@@ -11,6 +11,7 @@ def create_search_criteria(initial=None):
             Criteria.initialize_page_len,
             Criteria.initialize_sort,  # Must run after initialize_keywords().
             Criteria.initialize_abstracts,
+            Criteria.initialize_wordcloud,
             Criteria.initialize_print_preview,
             Criteria.initialize_id,  # Must run after initialize_page_len().
         ],
@@ -184,6 +185,16 @@ class Criteria:
         sort_spec = composer().sorts.get(initial.get("sort", ""))
         if sort_spec and sort_spec.is_allowed(self):
             self.options["sort"] = sort_spec.key
+
+    def initialize_wordcloud(self, initial):
+        if config("kerko.features.wordcloud_toggler"):
+            enabled_by_default = config("kerko.features.wordcloud")
+            wordcloud = initial.get("wordcloud")
+            if wordcloud:
+                if wordcloud in ["t", "1"] and not enabled_by_default:
+                    self.options["wordcloud"] = 1
+                elif wordcloud in ["f", "0"] and enabled_by_default:
+                    self.options["wordcloud"] = 0
 
     def initialize_abstracts(self, initial):
         if config("kerko.features.results_abstracts_toggler"):
